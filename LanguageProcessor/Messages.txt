@@ -1,0 +1,7 @@
+Name,Description,Type,English,German,French,Spanish
+None,No String,F,,,,
+Empty,Empty String,F,,,,
+First,First String,T,Eng1,Ger1,Frn1,Spn1
+First,First String,F,Eng2,Ger2,Frn2,Spn2
+First,First String,T,Eng3,Ger3,Frn3,Spn3
+First,First String,T,Eng4,Ger4,Frn4,Spn4
