@@ -8,17 +8,25 @@
 //##############################################################################
 // CSwitch
 //##############################################################################
- 
+// Class contains the switch, its ID, text, and all its parameters. It can also
+// check the switch's validity.
+//##############################################################################
+
 //------------------------------------------------------------------------------
 // Constructor creates an object with a pointer to the corresponding switch
-// spec and an empty list of parameters.
+// spec within the SwitchSpec table and an empty list of parameters.
 //
-CSwitch::CSwitch(const CSwitchSpec *pswitchSpec, const std::string &switchText)
-                 : mpSwitchSpec(pswitchSpec), mSwitchText(switchText) {
+CSwitch::CSwitch(const CSwitchSpec *pswitchSpecTable,
+                 const std::string &switchText)
+    : mpSwitchSpec(pswitchSpecTable), mSwitchText(switchText) {
+    // Find the appropriate Switch Spec or ESwitchID::None if not found
+    while (mpSwitchSpec->SwitchID != ESwitchID::None &&
+        switchText != mpSwitchSpec->SwitchText)
+        ++mpSwitchSpec;
 }
 
 //------------------------------------------------------------------------------
-// Copy constructor creates a copy of another object.
+// Copy constructor creates a copy of another CSwitch.
 //
 CSwitch::CSwitch(const CSwitch &other) : mpSwitchSpec(other.mpSwitchSpec),
                                          mSwitchText(other.mSwitchText) {
@@ -34,7 +42,7 @@ void CSwitch::ParameterAdd(const std::string &parameter) {
 }
 
 //------------------------------------------------------------------------------
-// Function copies the switch's parameters to parameters.
+// Function outputs the switch's parameters to parameters.
 //
 void CSwitch::Parameters(std::vector<std::string>  &parameters) const {
     parameters.clear();
@@ -43,34 +51,39 @@ void CSwitch::Parameters(std::vector<std::string>  &parameters) const {
 }
 
 //------------------------------------------------------------------------------
-// Function first checks whether the switch is valid.  It the checks the number
-// of parameters against the switch spec and throws exceptions if too few or
-// too many.
+// Function first checks whether the switch is valid.  It then checks the number
+// of parameters against the switch spec. An exception is thrown if there are
+// any problems.
 //
 void CSwitch::Check() const {
-    // Check for invalid switch
+    // Check for invalid (unknown) switch
     if (mpSwitchSpec->SwitchID == ESwitchID::None) {
         std::stringstream Message;
-        Message << "Switch \"" << mSwitchText << "\" is not valid.";
+        Message << "CSwitch::Check(): " << "Switch \"" << mSwitchText
+                << "\" is not valid.";
         throw std::exception(Message.str().c_str());
     }
 
-    // Check for too many or too few switches
+    // Check for wrong number of switch parameters
     size_t NParameters = mParameters.size();
-    std::string Relation;
-    if (NParameters < mpSwitchSpec->MinParameters)
-        Relation = "few";
-    else if (NParameters > mpSwitchSpec->MaxParameters)
-        Relation = "many";
-
-    if (!Relation.empty()) {
+    if (NParameters < mpSwitchSpec->MaxParameters ||
+        NParameters > mpSwitchSpec->MaxParameters) {
         std::stringstream Message;
-        Message << "Too " << Relation << " parameters for \""
-                << mpSwitchSpec->SwitchText << "\".";
+        Message << "CSwitch::Check(): "
+                << "Number of parameters expected for \"" 
+                << mpSwitchSpec->SwitchText << "\": " 
+                << mpSwitchSpec->MinParameters;
+        if (mpSwitchSpec->MaxParameters > mpSwitchSpec->MinParameters)
+            Message << " to " << mpSwitchSpec->MaxParameters;
+        Message << ".";
         throw std::exception(Message.str().c_str());
     }
 }
 
+//##############################################################################
+// CSwitches
+//##############################################################################
+// Class contains a list of switches.
 //##############################################################################
 
 //------------------------------------------------------------------------------
@@ -84,8 +97,7 @@ CSwitches::CSwitches(const CSwitchSpec *pswitchSpecTable) :
 
 
 //------------------------------------------------------------------------------
-// Copy constructor creates another object by copying the content of another
-// object.
+// Copy constructor initializes this object with the content of another.
 //
 CSwitches::CSwitches(const CSwitches &other) :
     mpSwitchSpecTable(other.mpSwitchSpecTable) {
@@ -104,108 +116,35 @@ void CSwitches::ExecPath(const std::string &path) {
     mExecPath = path.substr(0, LastIx + 1);
 }
 
-////------------------------------------------------------------------------------
-//// Function adds switches and their parameters to the contained list of switches
-//// while checking against the switch spec table.
-////
-//void CSwitches::ItemAdd(const std::string &item) {
-//    // Check for empty item
-//    if (item.size() == 0)
-//        throw std::exception("Empty item.");
-//
-//    if (item[0] == '-') {  // If switch
-//                           // Make sure previous switches are OK
-//        Check();
-//
-//        // Find corresponding switch spec
-//        const CSwitchSpec *pSwitchSpec = mpSwitchSpecTable;
-//        while (pSwitchSpec->SwitchText != nullptr && item != pSwitchSpec->SwitchText)
-//            ++pSwitchSpec;
-//
-//        // Check for unknown switch
-//        if (pSwitchSpec->SwitchText == nullptr) {
-//            std::stringstream Message;
-//            Message << "Invalid switch: \"" << item << "\".";
-//            throw std::exception(Message.str().c_str());
-//        }
-//
-//        // Check for already defined switch
-//        size_t FoundIx = Find(pSwitchSpec->SwitchID);
-//        if (FoundIx != NotFound) {
-//            std::stringstream Message;
-//            Message << "Switch \"" << item << "\" is already defined";
-//            std::string PreviousSwitchText = mSwitches[FoundIx].SwitchText();
-//            if (item != PreviousSwitchText)
-//                Message << " by switch \"" << PreviousSwitchText << "\"";
-//            Message << ".";
-//            throw std::exception(Message.str().c_str());
-//        }
-//
-//        // Add switch
-//        mSwitches.push_back(CSwitch(pSwitchSpec));
-//    }
-//    else {  // If parameter
-//            // Add parameter if valid
-//        size_t SwitchCount = mSwitches.size();
-//        if (SwitchCount == 0) {
-//            std::stringstream Message;
-//            Message << "No switch is active for parameter \"" << item << "\".";
-//            throw std::exception(Message.str().c_str());
-//        }
-//        size_t LastIx = SwitchCount - 1;
-//        mSwitches[LastIx].ParameterAdd(item);
-//    }
-//}
-
 //------------------------------------------------------------------------------
-// Function adds switches and their parameters to the contained list of switches
-// while checking against the switch spec table.
+// Taking one command line token at a time, this function adds switches and
+// their parameters to the contained list of switches while checking against
+// the switch spec table.
 //
 void CSwitches::ItemAdd(const std::string &item) {
     // Check for empty item
     if (item.size() == 0)
-        throw std::exception("Empty item.");
+        throw std::exception("CSwitches::ItemAdd(): Empty item.");
 
     if (item[0] == '-') {  // If switch
         // Find corresponding switch spec
         const CSwitchSpec *pSwitchSpec = mpSwitchSpecTable;
-        while (pSwitchSpec->SwitchText != nullptr && item != pSwitchSpec->SwitchText)
+        while (pSwitchSpec->SwitchID != ESwitchID::None &&
+               item != pSwitchSpec->SwitchText)
             ++pSwitchSpec;
-
-    //    // Check for unknown switch
-    //    if (pSwitchSpec->SwitchText == nullptr) {
-    //        std::stringstream Message;
-    //        Message << "Invalid switch: \"" << item << "\".";
-    //        throw std::exception(Message.str().c_str());
-    //    }
-
-    //    // Check for already defined switch
-    //    size_t FoundIx = Find(pSwitchSpec->SwitchID);
-    //    if (FoundIx != NotFound) {
-    //        std::stringstream Message;
-    //        Message << "Switch \"" << item << "\" is already defined";
-    //        std::string PreviousSwitchText = mSwitches[FoundIx].SwitchText();
-    //        if (item != PreviousSwitchText)
-    //            Message << " by switch \"" << PreviousSwitchText << "\"";
-    //        Message << ".";
-    //        throw std::exception(Message.str().c_str());
-    //    }
 
         // Add switch
         mSwitches.push_back(CSwitch(pSwitchSpec, item));
     }
-    else {  // If parameter
-            // Add parameter if valid
+    else {  // Add parameter if valid and switch active
         size_t SwitchCount = mSwitches.size();
-        //if (SwitchCount == 0) {
-        //    std::stringstream Message;
-        //    Message << "No switch is active for parameter \"" << item << "\".";
-        //    throw std::exception(Message.str().c_str());
-        //}
-        if (SwitchCount > 0) {
-            size_t LastIx = SwitchCount - 1;
-            mSwitches[LastIx].ParameterAdd(item);
+        if (SwitchCount == 0) {
+            std::stringstream Message;
+            Message << "CSwitches::ItemAdd(): " 
+                    << "No switch is active for parameter \"" << item << "\".";
+            throw std::exception(Message.str().c_str());
         }
+        mSwitches[SwitchCount - 1].ParameterAdd(item);
     }
 }
 
@@ -261,8 +200,9 @@ void CSwitches::Check() const {
         for (size_t Ix = 0; Ix < Iy; ++Ix) {
             if (mSwitches[Ix].SwitchID() == SwitchID) {
                 std::stringstream Message;
-                Message << "Switch \"" << mSwitches[Iy].SwitchText()
-                    << "\" is already specified";
+                Message << "CSwitches::Check(): " << "Switch \"" 
+                        << mSwitches[Iy].SwitchText()
+                        << "\" is already specified";
                 if (mSwitches[Ix].SwitchText() != mSwitches[Iy].SwitchText())
                     Message << " by \"" << mSwitches[Ix].SwitchText() << "\"";
                 Message << ".";
@@ -274,8 +214,8 @@ void CSwitches::Check() const {
 }
 
 //------------------------------------------------------------------------------
-// Function shows a list of switches and their corresponding parameters.
-//
+// Function shows, on std out, a list of switches and their corresponding
+// parameters.
 void CSwitches::Show() const {
     std::cout << mExecPath;
     std::cout << std::endl << "Switches" << std::endl;

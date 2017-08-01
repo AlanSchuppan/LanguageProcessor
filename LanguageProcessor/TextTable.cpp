@@ -19,8 +19,6 @@
 CTextTable::CTextTable(wchar_t delimiter, wchar_t quote) :
     mDelimiter(delimiter), mQuote(quote), mQuoteDelimiter(2, quote) {
     mQuoteDelimiter[1] = mDelimiter;
-    //std::cout << "QuoteDelimiter = \"" << WStrToUtf8(mQuoteDelimiter)
-    //          << "\"" << std::endl;
 }
 
 //------------------------------------------------------------------------------
@@ -74,7 +72,7 @@ CTextTable &CTextTable::operator=(CTextTable &&other) {
 }
 
 //------------------------------------------------------------------------------
-// void CTextTablel::Add(const std::wstring &value)
+// void CTextTable::Add(const std::wstring &value)
 //
 // Function adds the specified value to the output line, enclosing it in mQuotes
 // as needed.

@@ -28,7 +28,7 @@ public:
     void Add(const std::vector<std::wstring> &values);
     std::wstring Line() const;
     void Parse(const std::wstring &line,
-        std::vector<std::wstring> &values) const;
+               std::vector<std::wstring> &values) const;
 };
 
 // Clears the accumulated output line

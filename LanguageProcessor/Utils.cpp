@@ -97,7 +97,7 @@ std::string WStrToUtf8(const std::wstring &wstr) {
 //! specified digit character table and limiting the width as specified, which
 //! means some upper digits could be discarded.
 //
-std::string ToHex(const char *pdigits, uint32_t value, size_t width) {
+std::string ToHex(const char *pdigits, uint32_t value, size_t width, char lead) {
     std::string Hex(width + 2, '-');
 
     if (width > 8)
@@ -108,7 +108,7 @@ std::string ToHex(const char *pdigits, uint32_t value, size_t width) {
         value /= 16;
     }
     Hex[Ix--] = 'x';
-    Hex[Ix--] = '0';
+    Hex[Ix--] = lead;
     return Hex;
 }
 
@@ -117,8 +117,8 @@ std::string ToHex(const char *pdigits, uint32_t value, size_t width) {
 //! limiting the width as specified, which means some upper digits could be
 //! discarded.
 //
-std::string ToUpperHex(uint32_t value, size_t width) {
-    return ToHex("0123456789ABCDEF", value, width);
+std::string ToUpperHex(uint32_t value, size_t width, char lead) {
+    return ToHex("0123456789ABCDEF", value, width, lead);
 }
 
 //------------------------------------------------------------------------------
@@ -126,8 +126,8 @@ std::string ToUpperHex(uint32_t value, size_t width) {
 //! limiting the width as specified, which means isome upper digits could be
 //! discarded.
 //
-std::string ToLowerHex(uint32_t value, size_t width) {
-    return ToHex("0123456789abcdef", value, width);
+std::string ToLowerHex(uint32_t value, size_t width, char lead) {
+    return ToHex("0123456789abcdef", value, width, lead);
 }
 
 //##############################################################################

@@ -7,13 +7,14 @@
 
 //#############################################################################
 
+static const wchar_t ByteOrderMark = 0xfeff;
 std::wstring Utf8ToWStr(const std::string  &utf8);
 std::string  WStrToUtf8(const std::wstring &wstr);
 
 //#############################################################################
 
-std::string  ToUpperHex(uint32_t value, size_t width = 8);
-std::string  ToLowerHex(uint32_t value, size_t width = 8);
+std::string  ToUpperHex(uint32_t value, size_t width = 8, char lead = '0');
+std::string  ToLowerHex(uint32_t value, size_t width = 8, char lead = '0');
 
 //#############################################################################
 // CModbusCRC

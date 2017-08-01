@@ -6,8 +6,15 @@
 #include <string>
 #include <vector>
 
+// Define IDs corresponding to each switch. None indicates no switch and can be 
+// used in error situations or list termination.
 enum class ESwitchID { None, Help, Verbose, Pause, Language };
 
+//##############################################################################
+// CSwitches
+//##############################################################################
+// Structure describes a switch by providing its text, ID, and the minimum and
+// maximum number of expected parameters.
 //##############################################################################
 
 struct CSwitchSpec {
@@ -18,10 +25,14 @@ struct CSwitchSpec {
 };
 
 //##############################################################################
+// CSwitch
+//##############################################################################
+// Class contains the switch, its ID, text, and all its parameters.
+//##############################################################################
 
 class CSwitch {
 public:
-    CSwitch(const CSwitchSpec *pswitchSpec, const std::string &switchText);
+    CSwitch(const CSwitchSpec *pswitchSpecTable, const std::string &switchText);
     CSwitch(const CSwitch &other);
 
     void ParameterAdd(const std::string &parameter);
@@ -36,6 +47,10 @@ private:
     std::vector<std::string>  mParameters;
 };
 
+//##############################################################################
+// CSwitches
+//##############################################################################
+// Class contains a list of switches.
 //##############################################################################
 
 class CSwitches {

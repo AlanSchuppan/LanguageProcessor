@@ -80,17 +80,59 @@ void CMessage::TranslationAdd(const std::vector<std::wstring> &translations) {
 //! Function gets the translation associated with the specified languagei, whose
 //! location is determined from the specified list of languages.
 // 
-std::wstring CMessage::Translation(const std::vector<std::wstring> &languages,
+std::wstring CMessage::Translation(const std::vector<CLanguageSpec> &languageSpecs,
     const std::wstring &language) const {
     size_t Ix = 0;
-    size_t Count = languages.size();
-    while (Ix < Count && languages[Ix] != language)
+    size_t Count = languageSpecs.size();
+    while (Ix < Count && languageSpecs[Ix].Name() != language)
         ++Ix;
     if (Ix >= Count) // If language not found
         return L"???";
     if (!DoTranslate()) // If do not translate
         Ix = 0;
     return (Ix < mTranslations.size()) ? mTranslations[Ix] : std::wstring(L"");
+}
+
+//##############################################################################
+// CLanguageSpec
+//##############################################################################
+//! contains language specifications, such as name, ultimate storage location,
+//! listing order, and character set.
+//##############################################################################
+
+//------------------------------------------------------------------------------
+//! Constructor initializes the language specification
+//
+CLanguageSpec::CLanguageSpec(const std::wstring &name, EStorage storage,
+                             uint8_t order, uint8_t charSet) : 
+                             mName(name), mStorage(storage), mOrder(order),
+                             mCharSet(charSet) {
+}
+
+CLanguageSpec::CLanguageSpec(const CLanguageSpec &other) :
+    mName(other.mName), mStorage(other.mStorage),
+    mOrder(other.mOrder), mCharSet(other.mCharSet) {
+}
+
+CLanguageSpec::CLanguageSpec(CLanguageSpec &&other) :
+    mName(std::move(other.mName)), mStorage(other.mStorage),
+    mOrder(other.mOrder), mCharSet(other.mCharSet) {
+}
+
+const CLanguageSpec &CLanguageSpec::operator=(const CLanguageSpec &other) {
+    mName    = other.mName;
+    mStorage = other.mStorage;
+    mOrder   = other.mOrder;
+    mCharSet = other.mCharSet;
+    return *this;
+}
+
+const CLanguageSpec &CLanguageSpec::operator=(const CLanguageSpec &&other) {
+    mName    = std::move(other.mName);
+    mStorage = other.mStorage;
+    mOrder   = other.mOrder;
+    mCharSet = other.mCharSet;
+    return *this;
 }
 
 //##############################################################################
@@ -113,7 +155,7 @@ void CMessages::Translations(const std::wstring &language,
     std::vector<std::wstring> &translations) const {
     translations.clear();
     for (auto MsgIt = mMessages.begin(); MsgIt != mMessages.end(); ++MsgIt)
-        translations.push_back(MsgIt->Translation(mLanguages, language));
+        translations.push_back(MsgIt->Translation(mLanguageSpecs, language));
 }
 
 //------------------------------------------------------------------------------
@@ -140,10 +182,11 @@ uint32_t MessagesTest(std::vector<std::string> &report) {
     report.push_back("Messages Test:");
 
     // Read languages
-    std::vector<std::wstring> Languages;
-    for (size_t Iy = 0; FileTable[0].Items[Iy] != nullptr; ++Iy)
-        Languages.push_back(FileTable[0].Items[Iy]);
-    CMessages Messages(Languages);
+    CMessages Messages;
+    for (size_t Iy = 0; FileTable[0].Items[Iy] != nullptr; ++Iy) {
+        CLanguageSpec LanguageSpec(FileTable[0].Items[Iy], CLanguageSpec::None, 0, 0);
+        Messages.LanguageSpecAdd(LanguageSpec);
+    }
 
     // Read Translations
     for (size_t Ix = 1; Ix < FileTableLen; ++Ix) {
@@ -154,17 +197,20 @@ uint32_t MessagesTest(std::vector<std::string> &report) {
         Messages.MessageAdd(Message);
     }
 
+    std::vector<CLanguageSpec> LanguageSpecs;
+    Messages.LanguageSpecs(LanguageSpecs);
+
     // Check results
     size_t Ix = 0;
-    for (auto LangIt = Languages.begin(); LangIt != Languages.end(); ++LangIt) {
+    for (auto LangIt = LanguageSpecs.begin(); LangIt != LanguageSpecs.end(); ++LangIt) {
         std::vector<std::wstring> Translations;
-        Messages.Translations(*LangIt, Translations);
+        Messages.Translations(LangIt->Name(), Translations);
         size_t Iy = 1;
         for (std::wstring Translation : Translations) {
             size_t Iz = (FileTable[Iy].Translate) ? Ix : 0;
             if (Translation != FileTable[Iy].Items[Iz]) {
                 std::wstring Report(L"  Incorrect ");
-                Report += *LangIt;
+                Report += LangIt->Name();
                 Report += L": \"";
                 Report += Translation;
                 Report += L"\" should be \"";

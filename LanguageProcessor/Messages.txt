@@ -1,7 +1,8 @@
-Name,Description,Type,English,German,French,Spanish
+Name,Description,Type,"English,Code,0,0","German,Bin,56,1","French,Bin,27,1","Spanish,Bin,18,1"
 None,No String,F,,,,
 Empty,Empty String,F,,,,
+LanguageName,Language name in its own tongue,T,English,Deutsch,Francois,Enpanol
 First,First String,T,Eng1,Ger1,Frn1,Spn1
-First,First String,F,Eng2,Ger2,Frn2,Spn2
-First,First String,T,Eng3,Ger3,Frn3,Spn3
-First,First String,T,Eng4,Ger4,Frn4,Spn4
+Second,Second String,F,Eng2,Ger2,Frn2,Spn2
+Third,Third String,T,Eng3,Ger3,Frn3,Spn3
+Fourth,Fourth String,T,Eng4,Ger4,Frn4,Spn4
