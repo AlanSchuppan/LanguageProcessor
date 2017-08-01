@@ -3,3 +3,5 @@ LanguageProcessor.VC.db
 ipch
 LanguageProcessor/Debug
 ipch
+*.opendb
+*.vcxproj*
