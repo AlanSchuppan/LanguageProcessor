@@ -74,15 +74,17 @@ public:
     void         Description(const std::wstring &description) {
         mDescription = description;
     }
-    wchar_t      Translate() const { return mTranslate; }
-    void         Translate(wchar_t translate) { mTranslate = translate; }
-    void         Translate(bool translate) { mTranslate = (translate) ? L'T' : L'F'; }
-    bool         DoTranslate() const;
+    wchar_t Translate() const { return mTranslate; }
+    void Translate(wchar_t translate) { mTranslate = translate; }
+    void Translate(bool translate) { mTranslate = (translate) ? L'T' : L'F'; }
+    bool DoTranslate() const;
 
     void TranslationAdd(const std::wstring &translation);
     void TranslationAdd(const std::vector<std::wstring> &translations);
     std::wstring Translation(const std::vector<CLanguageSpec> &languageSpecs,
         const std::wstring &language) const;
+    std::wstring Translation(const std::vector<CLanguageSpec> &languageSpecs,
+        const std::string &language) const;
 
 private:
     std::wstring mName;
@@ -93,7 +95,7 @@ private:
 
 // Returns true if this string should be translated
 inline bool CMessage::DoTranslate() const {
-    return (mTranslate != L'F');
+    return (mTranslate != 'F');
 }
 
 //##############################################################################
@@ -113,9 +115,12 @@ public:
 
     void LanguageSpecAdd(const CLanguageSpec &languageSpec);
     void LanguageSpecs(std::vector<CLanguageSpec> &languages) const;
+    void EnumNames(std::vector<std::string> &enumNames);
 
     void MessageAdd(const CMessage &message);
     void Translations(const std::wstring &language,
+        std::vector<std::wstring> &translations) const;
+    void Translations(const std::string &language,
         std::vector<std::wstring> &translations) const;
 
 private:

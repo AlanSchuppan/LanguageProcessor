@@ -77,7 +77,7 @@ void CMessage::TranslationAdd(const std::vector<std::wstring> &translations) {
 }
 
 //------------------------------------------------------------------------------
-//! Function gets the translation associated with the specified languagei, whose
+//! Function gets the translation associated with the specified language, whose
 //! location is determined from the specified list of languages.
 // 
 std::wstring CMessage::Translation(const std::vector<CLanguageSpec> &languageSpecs,
@@ -91,6 +91,15 @@ std::wstring CMessage::Translation(const std::vector<CLanguageSpec> &languageSpe
     if (!DoTranslate()) // If do not translate
         Ix = 0;
     return (Ix < mTranslations.size()) ? mTranslations[Ix] : std::wstring(L"");
+}
+
+//------------------------------------------------------------------------------
+//! Function gets the translation associated with the specified language, whose
+//! location is determined from the specified list of languages.
+// 
+std::wstring CMessage::Translation(const std::vector<CLanguageSpec> &languageSpecs,
+    const std::string &language) const {
+    return Translation(languageSpecs, Utf8ToWStr(language));
 }
 
 //##############################################################################
@@ -156,6 +165,20 @@ void CMessages::Translations(const std::wstring &language,
     translations.clear();
     for (auto MsgIt = mMessages.begin(); MsgIt != mMessages.end(); ++MsgIt)
         translations.push_back(MsgIt->Translation(mLanguageSpecs, language));
+}
+
+//------------------------------------------------------------------------------
+//! Function returns the translations for the specified language. 
+//
+void CMessages::Translations(const std::string &language,
+    std::vector<std::wstring> &translations) const {
+    Translations(Utf8ToWStr(language), translations);
+}
+
+void CMessages::EnumNames(std::vector<std::string> &enumNames) {
+    enumNames.clear();
+    for (auto MsgIt = mMessages.begin(); MsgIt != mMessages.end(); ++MsgIt)
+        enumNames.push_back(WStrToUtf8(MsgIt->Name()));
 }
 
 //------------------------------------------------------------------------------

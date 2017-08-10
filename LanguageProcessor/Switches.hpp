@@ -8,7 +8,7 @@
 
 // Define IDs corresponding to each switch. None indicates no switch and can be 
 // used in error situations or list termination.
-enum class ESwitchID { None, Help, Verbose, Pause, Language };
+enum class ESwitchID { None, Help, Verbose, Test, Pause, Cpp, Language, Messages };
 
 //##############################################################################
 // CSwitches

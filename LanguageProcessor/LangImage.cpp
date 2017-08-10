@@ -149,8 +149,8 @@ void CLangImage::Write(uint32_t value, uint32_t size) {
 //!
 void CLangImage::WriteLine(const uint8_t **ppimage, uint32_t maxBytes,
                            uint32_t nBytes, const std::string &comment,
-                           std::ostream &file) {
-    file << "    \"";
+                           std::ostream &file, const char *indent) {
+    file << indent << "\"";
 
     for (uint32_t Ix = 0; Ix < nBytes; ++Ix)
         file << ToUpperHex(*(*ppimage)++, 2, '\\');
@@ -304,7 +304,7 @@ void CLangImage::Fill(const std::string &language,
 //! Function saves the language image as C++ code using the provided enums.
 //
 const void CLangImage::SaveAsCode(const std::vector<std::string> &enums,
-    std::ostream &stream) const {
+    std::ostream &stream, const char *indent) const {
     if (mpImage == nullptr)
         throw std::runtime_error("CLangImage::SaveAsCode: No image exists.");
     const uint8_t *pRead = mpImage;
@@ -315,26 +315,26 @@ const void CLangImage::SaveAsCode(const std::vector<std::string> &enums,
            << std::endl;
 
     // Add header
-    stream << "    // Header" << std::endl;
-    WriteLine(&pRead, 4, 4, "Signature", stream);
-    WriteLine(&pRead, 4, 2, "CRC", stream);
-    WriteLine(&pRead, 4, 1, "NDWordsHdr", stream);
+    stream << indent <<"// Header" << std::endl;
+    WriteLine(&pRead, 4, 4, "Signature", stream, indent);
+    WriteLine(&pRead, 4, 2, "CRC", stream, indent);
+    WriteLine(&pRead, 4, 1, "NDWordsHdr", stream, indent);
     uint8_t NWordsLang = *pRead;
-    WriteLine(&pRead, 4, 1, "NDWordsLang", stream);
-    WriteLine(&pRead, 4, 4, "Total Size", stream);
+    WriteLine(&pRead, 4, 1, "NDWordsLang", stream, indent);
+    WriteLine(&pRead, 4, 4, "Total Size", stream, indent);
     uint32_t NStrings = *reinterpret_cast<const uint32_t *>(pRead);
-    WriteLine(&pRead, 4, 4, "NStrings", stream);
+    WriteLine(&pRead, 4, 4, "NStrings", stream, indent);
     uint8_t Flags = *pRead;
-    WriteLine(&pRead, 4, 1, "Flags", stream);
-    WriteLine(&pRead, 4, 1, "Version", stream);
-    WriteLine(&pRead, 4, 1, "Lang Order", stream);
-    WriteLine(&pRead, 4, 1, "Lang Char Set", stream);
+    WriteLine(&pRead, 4, 1, "Flags", stream, indent);
+    WriteLine(&pRead, 4, 1, "Version", stream, indent);
+    WriteLine(&pRead, 4, 1, "Lang Order", stream, indent);
+    WriteLine(&pRead, 4, 1, "Lang Char Set", stream, indent);
 
     {   // Add native language name
         std::string Native("Native Language Name");
-        stream << std::endl << "    // " << Native << std::endl;
+        stream << std::endl << indent << "// " << Native << std::endl;
         while (NWordsLang-- > 0) {
-            WriteLine(&pRead, 4, 4, Native, stream);
+            WriteLine(&pRead, 4, 4, Native, stream, indent);
             Native.clear();
         }
     }
@@ -345,13 +345,13 @@ const void CLangImage::SaveAsCode(const std::vector<std::string> &enums,
     uint32_t NOffsetBytes = (Flags & 3) + 1;
     {
         stream << std::endl;
-        stream << "    // Offset Table (" << 8 * NOffsetBytes << "-bit)"
+        stream << indent << "// Offset Table (" << 8 * NOffsetBytes << "-bit)"
             << std::endl;
         for (uint32_t Ix = 0; Ix < NStrings; ++Ix)
             WriteLine(&pRead, NOffsetBytes, NOffsetBytes,
-            (Ix < NEnums) ? enums[Ix] : "", stream);
+            (Ix < NEnums) ? enums[Ix] : "", stream, indent);
         if ((reinterpret_cast<const uint32_t>(pRead) & 1) != 0)
-            WriteLine(&pRead, NOffsetBytes, 1, "** Alignment padding", stream);
+            WriteLine(&pRead, NOffsetBytes, 1, "** Alignment padding", stream, indent);
     }
 
     {   // List strings
@@ -359,7 +359,7 @@ const void CLangImage::SaveAsCode(const std::vector<std::string> &enums,
         const uint8_t *pStrings = pRead;
         uint32_t NOffsetChars = 2 * NOffsetBytes;
         stream << std::endl;
-        stream << "    // Strings ("
+        stream << indent << "// Strings ("
             << (Unicode ? "Unicode" : "UTF-8") << ")"
             << std::endl;
         for (uint32_t Ix = 0; Ix < NStrings; ++Ix) {
@@ -389,7 +389,7 @@ const void CLangImage::SaveAsCode(const std::vector<std::string> &enums,
                 uint32_t ThisNBytes = NBytes;
                 if (ThisNBytes > 8)
                     ThisNBytes = 8;
-                WriteLine(&pRead, 8, ThisNBytes, Comment, stream);
+                WriteLine(&pRead, 8, ThisNBytes, Comment, stream, indent);
                 NBytes -= ThisNBytes;
                 Comment.clear();
             }
@@ -397,7 +397,7 @@ const void CLangImage::SaveAsCode(const std::vector<std::string> &enums,
     }
 
     // Close language definition
-    std::wcout << "};";
+    stream << "};" << std::endl;
 }
 
 //------------------------------------------------------------------------------
@@ -485,5 +485,5 @@ void CLangImage::Show() const {
     Enums.push_back("Third");
     Enums.push_back("Fourth");
 
-    SaveAsCode(Enums, std::cout);
+    SaveAsCode(Enums, std::cout, "    ");
 }
