@@ -50,6 +50,8 @@ void MakeFolder(const std::string &path) {
     }
 }
 
+//##############################################################################
+
 int main(int argc, char** argv) {
     static const size_t NameIx = 0;
     static const size_t DescIx = 1;
@@ -159,11 +161,13 @@ int main(int argc, char** argv) {
             }
 
             // Read and capture the heading line
-            std::cout << std::endl;
+            if (Switches.Exists(ESwitchID::Verbose))
+                std::cout << std::endl;
             InStream.getline(Buf, sizeof(Buf) - 1);
             {
                 std::wstring Line(Utf8ToWStr(Buf));
-                std::cout << "\"" << Buf << "\"" << std::endl;
+                if (Switches.Exists(ESwitchID::Verbose))
+                    std::cout << "\"" << Buf << "\"" << std::endl;
                 std::vector<std::wstring> Values;
                 TextTable.Parse(Line, Values);
                 size_t Count = Values.size();
@@ -207,7 +211,8 @@ int main(int argc, char** argv) {
             while (!InStream.eof()) {
                 InStream.getline(Buf, sizeof(Buf) - 1);
                 if (*Buf != '\0') {
-                    std::cout << "\"" << Buf << "\"" << std::endl;
+                    if (Switches.Exists(ESwitchID::Verbose))
+                        std::cout << "\"" << Buf << "\"" << std::endl;
                     std::wstring Line(Utf8ToWStr(Buf));
                     std::vector<std::wstring> Values;
                     TextTable.Parse(Line, Values);

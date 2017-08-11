@@ -167,7 +167,7 @@ void CLangImage::WriteLine(const uint8_t **ppimage, uint32_t maxBytes,
 //! Function creates the binary language image for the specified language from
 //! the provided translations, language order, and character set. In doing so,
 //! it automatically makes choices to achieve the smallest data footprint. See
-//!  thelanuguage file format documentation for details. It assumes the third
+//! the lanuguage file format documentation for details. It assumes the third
 //! item in text contains the language name in its own tongue.
 //
 void CLangImage::Fill(const std::string &language,

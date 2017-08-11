@@ -25,7 +25,6 @@ public:
     const uint8_t *Image() const { return mpImage; }
     const void SaveAsCode(const std::vector<std::string> &enums,
         std::ostream &stream, const char *indent) const;
-    //void GenerateCode(const std::vector<std::string> &enums, std::ostream &file) const;
     uint32_t Size() const { return mTotalSize; }
     void Show() const;
 private:
