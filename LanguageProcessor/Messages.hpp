@@ -91,12 +91,15 @@ private:
     std::wstring mDescription;
     wchar_t      mTranslate;
     std::vector<std::wstring> mTranslations;
+
+    void CMessage::Write(uint8_t *&pwrite, uint32_t value, uint32_t size);
 };
 
 // Returns true if this string should be translated
 inline bool CMessage::DoTranslate() const {
     return (mTranslate != 'F');
 }
+
 
 //##############################################################################
 // CMessages
@@ -110,11 +113,12 @@ public:
     //CMessages(const std::vector<std::wstring> &languages);
     CMessages(const CMessages &other) = delete;
     CMessages(CMessages &&other) = delete;
+   ~CMessages();
     CMessages &operator=(const CMessages &other) = delete;
     CMessages &operator=(CMessages &&other) = delete;
 
     void LanguageSpecAdd(const CLanguageSpec &languageSpec);
-    void LanguageSpecs(std::vector<CLanguageSpec> &languages) const;
+    void LanguageSpecs(std::vector<CLanguageSpec> &languageSpecs) const;
     void EnumNames(std::vector<std::string> &enumNames);
 
     void MessageAdd(const CMessage &message);
@@ -123,12 +127,17 @@ public:
     void Translations(const std::string &language,
         std::vector<std::wstring> &translations) const;
 
+    uint8_t *ImageCreate(const std::string &language, uint32_t &totalSize);
+
 private:
     std::vector<CLanguageSpec> mLanguageSpecs;
     std::vector<std::wstring> mStorages;
     std::vector<std::wstring> mOrders;
     std::vector<std::wstring> mCharSets;
     std::vector<CMessage> mMessages;
+    uint8_t *mpImage;
+
+    void Write(uint8_t *&pwrite, uint32_t value, uint32_t size);
 };
 
 //! Sets the languages for the translations 

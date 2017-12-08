@@ -36,7 +36,8 @@ CMessage::CMessage(CMessage &&other) : mTranslate(other.mTranslate) {
 }
 
 //------------------------------------------------------------------------------
-//!! Copy assignment operator copies the content of another object.
+//! Copy assignment operator copies the content of another object.
+//
 CMessage &CMessage::operator=(const CMessage &other) {
     mName = other.mName;
     mDescription = other.mDescription;
@@ -154,7 +155,14 @@ const CLanguageSpec &CLanguageSpec::operator=(const CLanguageSpec &&other) {
 //! Default constructor does nothing beyond the autmatic construction of
 //! mLanguages and mTranslations.
 //
-CMessages::CMessages() {
+CMessages::CMessages() : mpImage(nullptr) {
+}
+
+//------------------------------------------------------------------------------
+//! Destructor ddeletes the image.
+//
+CMessages::~CMessages() {
+    delete mpImage;
 }
 
 //------------------------------------------------------------------------------
@@ -179,6 +187,174 @@ void CMessages::EnumNames(std::vector<std::string> &enumNames) {
     enumNames.clear();
     for (auto MsgIt = mMessages.begin(); MsgIt != mMessages.end(); ++MsgIt)
         enumNames.push_back(WStrToUtf8(MsgIt->Name()));
+}
+
+//------------------------------------------------------------------------------
+//! Private function writes the specified portion of the unsigned integer to the
+//! image at the current position specified by pwrite and increments the
+//! position accordingly.
+//
+void CMessages::Write(uint8_t *&pwrite, uint32_t value, uint32_t size) {
+    if (size > sizeof(value))
+        size = sizeof(value);
+    for (uint32_t Ix = 0; Ix < size; ++Ix) {
+        *pwrite++ = static_cast<uint8_t>(value);
+        value >>= 8;
+    }
+}
+
+//------------------------------------------------------------------------------
+//! Function creates the binary language image for the specified language from
+//! the provided translations, language order, and character set. In doing so,
+//! it automatically makes choices to achieve the smallest data footprint. See
+//! the lanuguage file format documentation for details. It assumes the third
+//! item in text contains the language name in its own tongue.
+//
+uint8_t *CMessages::ImageCreate(const std::string &language, uint32_t &totalSize) {
+    static const uint32_t kSignature = 0x628efe45;
+    static const uint8_t  kNDblWordsHdr = 5;
+    static const uint8_t  kVersion = 1;
+    static const uint32_t kBytesPerDWord = sizeof(uint32_t);
+
+    std::vector<std::wstring> Translations;
+    this->Translations(language, Translations);
+    uint32_t NStrings = Translations.size();
+    if (NStrings < 3)
+        throw(std::exception("Not enough strings to provide language name."));
+
+    std::string LanguageName = WStrToUtf8(Translations[2]);
+    uint8_t NDblWordsLang = static_cast<uint8_t>((LanguageName.size()
+        + sizeof(uint32_t)) / sizeof(uint32_t));
+
+    // Compute size of wide string translations
+    uint32_t WideSize = NStrings; // Number of null terminators
+    for (std::wstring Text : Translations)
+        WideSize += Text.size();
+    WideSize *= sizeof(wchar_t);
+
+    // Compute size of narrow string translations
+    uint32_t NarrowSize = Translations.size(); // Number of null terminators
+    for (std::wstring Text : Translations)
+        NarrowSize += WStrToUtf8(Text).size();
+
+    //NarrowSize = 1000; // TODO: Remove
+
+    bool WideStrings = (WideSize < NarrowSize);
+    uint32_t StringSize = (WideStrings) ? WideSize : NarrowSize;
+
+    // Determine offset size (Not exact, but good enough)
+    uint8_t OffsetSize = 2;
+    if (StringSize >= 65536)
+        OffsetSize = 4;
+    else if (StringSize < 256)
+        OffsetSize = 1;
+
+    // Set the Unicode (UCS-2) flag if needed
+    uint8_t Flags = static_cast<uint8_t>(OffsetSize - 1);
+    if (WideStrings)
+        Flags |= 0x08;
+
+    // Determine whether strings need to be aligne to word boundary:
+    bool AlignStrings = (NStrings * OffsetSize % 2 == 1);
+
+    totalSize = StringSize
+        + (NDblWordsLang + kNDblWordsHdr) * sizeof(uint32_t)
+        + NStrings * OffsetSize;
+    if (AlignStrings)
+        ++totalSize;
+
+    //delete mpImage;
+    uint8_t *pImage = new uint8_t[totalSize];
+
+    // Fill for test purposes:
+    //for (uint32_t Ix = 0; Ix < totalSize; ++Ix)
+    //    mpImage[Ix] = 0xff;
+
+    // Write header
+    uint8_t *pWrite = pImage;
+    Write(pWrite, kSignature, 4);
+    Write(pWrite, 0, 2); // Temporary CRC
+    Write(pWrite, kNDblWordsHdr, 1);
+    Write(pWrite, NDblWordsLang, 1);
+    Write(pWrite, totalSize, 4);
+    Write(pWrite, NStrings, 4);
+    Write(pWrite, Flags, sizeof(Flags));
+    Write(pWrite, kVersion, sizeof(kVersion));
+
+    { // Write language order and character set
+        bool Found = false;
+        std::wstring WLanguage(Utf8ToWStr(language));
+        for (CLanguageSpec LanguageSpec : mLanguageSpecs)
+            if (LanguageSpec.Name() == WLanguage) {
+                Write(pWrite, LanguageSpec.Order(), sizeof(LanguageSpec.Order()));
+                Write(pWrite, LanguageSpec.CharSet(), sizeof(LanguageSpec.CharSet()));
+                Found = true;
+                break;
+            }
+        if (!Found) {
+            std::string Msg(" CMessages::ImageCreate(): Cannot find language \"");
+            Msg += language;
+            Msg += "\".";
+            throw std::runtime_error(Msg);
+        }
+    }
+
+    { // Write language name
+        for (char Ch : LanguageName)
+            Write(pWrite, Ch, sizeof(Ch));
+        size_t LangSize = NDblWordsLang * sizeof(uint32_t);
+        static const char Ch = '\0';
+        for (size_t Ix = LanguageName.size(); Ix < LangSize; ++Ix)
+            Write(pWrite, Ch, sizeof(Ch));
+    }
+
+    if (WideStrings) {
+        // Write the wide offsets and then pad to achieve word boundary
+        uint32_t Offset = 0;
+        for (std::wstring Text : Translations) {
+            Write(pWrite, Offset, OffsetSize);
+            Offset += 2 * (Text.size() + 1);
+        }
+        if (AlignStrings)
+            Write(pWrite, static_cast<uint8_t>(0), 1);
+
+        // Write the wide strings
+        for (std::wstring Text : Translations) {
+            for (wchar_t Ch : Text)
+                Write(pWrite, Ch, sizeof(Ch));
+            static const wchar_t Ch = '\0';
+            Write(pWrite, Ch, sizeof(Ch));
+        }
+    }
+    else {
+        // Write the wide offsets and then pad to achieve word boundary
+        uint32_t Offset = 0;
+        for (std::wstring Text : Translations) {
+            Write(pWrite, Offset, OffsetSize);
+            Offset += WStrToUtf8(Text).size() + 1;
+        }
+        if (AlignStrings)
+            Write(pWrite, static_cast<uint8_t>(0), 1);
+
+        // Write the narrow strings
+        for (std::wstring Text : Translations) {
+            std::string UTF8Text = WStrToUtf8(Text);
+            for (char Ch : UTF8Text)
+                Write(pWrite, Ch, sizeof(Ch));
+            static const char Ch = '\0';
+            Write(pWrite, Ch, sizeof(Ch));
+        }
+    }
+
+    // Compute and write the CRC
+    static const uint32_t CRCSkip = sizeof(uint32_t) + sizeof(uint16_t);
+    CModbusCRC ModbusCRC;
+    ModbusCRC.Add(mpImage + CRCSkip, totalSize - CRCSkip);
+    uint16_t CRC = ModbusCRC.Value();
+    pWrite = mpImage + CRCSkip - sizeof(CRC);
+    Write(pWrite, CRC, sizeof(CRC));
+
+    return pImage;
 }
 
 //------------------------------------------------------------------------------
